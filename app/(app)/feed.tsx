@@ -10,6 +10,8 @@ import {
   View,
 } from "react-native";
 
+import { getApiErrorMessage } from "@/src/services/api";
+import { getFeed } from "@/src/services/classFeed";
 import { useAuth } from "../../src/auth/AuthContext";
 import { PostCard } from "../../src/components/PostCard";
 import type { Post } from "../../src/types";
@@ -27,9 +29,8 @@ export default function FeedScreen() {
   const { token, user, signOut } = useAuth();
 
   const [authorsInput, setAuthorsInput] = useState("");
-  const [authorsInputTimeout, setAuthorsInputTimeout] = useState<number | null>(
-    null,
-  );
+  const [authorsInputTimeout, setAuthorsInputTimeout] =
+    useState<NodeJS.Timeout | null>(null);
   const authors = parseAuthors(authorsInput);
 
   const [posts, setPosts] = useState<Post[]>([]);
@@ -38,10 +39,42 @@ export default function FeedScreen() {
 
   const handleAuthorsInput = (text: string) => {
     // TODO: handle author filter input with debouncing using authorsInputTimeout
+    // This is for the optional filtering feature and should be skipped until
+    // the basic functionality is complete
+
+    // The idea is that when yuser types autho names, the app should wait
+    // a short period of time before reloading the feed instead of making a request
+    // on every keystroke. This is called debouncing and can be implemented using setTimeout and clearTimeout. You can use the handleAuthorsInput function to update the authorsInput state and also set a timeout to call loadFeed after a short delay (e.g. 500ms). If the user types again before the timeout is reached, you should clear the previous timeout and set a new one. This way, loadFeed will only be called after the user has stopped typing for 500ms, reducing the number of unnecessary requests to the server.
+    setAuthorsInput(text);
+    if (authorsInputTimeout) {
+      clearTimeout(authorsInputTimeout);
+    }
+    const timeout = setTimeout(() => {
+      loadFeed();
+    }, 500);
+    setAuthorsInputTimeout(timeout);
   };
 
   async function loadFeed() {
     // TODO: ensure token exists, get feed and set posts, and handle loading and errors
+    if (!token) {
+      setError("You must be logged in to view the feed.");
+      setPosts([]);
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+      const feed = await getFeed(authors);
+      setPosts(feed.posts);
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+      setPosts([]);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   useEffect(() => {

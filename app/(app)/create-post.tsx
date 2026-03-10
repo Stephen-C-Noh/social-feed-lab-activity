@@ -10,6 +10,8 @@ import {
 } from "react-native";
 import * as Yup from "yup";
 
+import { getApiErrorMessage } from "@/src/services/api";
+import { createPost } from "@/src/services/classFeed";
 import { useAuth } from "../../src/auth/AuthContext";
 
 const Schema = Yup.object({
@@ -27,6 +29,21 @@ export default function CreatePostScreen() {
         validationSchema={Schema}
         onSubmit={async (values, { setSubmitting }) => {
           // TODO: ensure the token exists, create the post using the values, redirect the user and handle errors and submitting
+          if (!token) {
+            setApiError("You must be logged in to create a post.");
+            setSubmitting(false);
+            return;
+          }
+
+          try {
+            setApiError(null);
+            await createPost(values.text);
+            router.replace("/(app)/feed");
+          } catch (err) {
+            setApiError(getApiErrorMessage(err));
+          } finally {
+            setSubmitting(false);
+          }
         }}
       >
         {({

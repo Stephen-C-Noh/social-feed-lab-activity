@@ -9,6 +9,9 @@ import {
 } from "react-native";
 import * as Yup from "yup";
 
+import { getApiErrorMessage } from "@/src/services/api";
+import { login } from "@/src/services/classFeed";
+import { useRouter } from "expo-router";
 import { useAuth } from "../src/auth/AuthContext";
 
 const Schema = Yup.object({
@@ -24,7 +27,7 @@ const Schema = Yup.object({
 export default function LoginScreen() {
   const { signIn } = useAuth();
   const [apiError, setApiError] = useState<string | null>(null);
-
+  const router = useRouter();
   return (
     <View style={{ flex: 1, padding: 16, gap: 12, justifyContent: "center" }}>
       <Text style={{ fontSize: 22, fontWeight: "600", textAlign: "center" }}>
@@ -37,6 +40,17 @@ export default function LoginScreen() {
         onSubmit={async (values, helpers) => {
           // TODO: Call the api to log the user in (using the service function), sign in the user in the auth context,
           // and redirect the user to the feed (plus nice error handling and submitting logic)
+          try {
+            setApiError(null);
+            const { token, user } = await login(values.username);
+
+            await signIn(token, user);
+            router.replace("/(app)/feed");
+          } catch (err) {
+            setApiError(getApiErrorMessage(err));
+          } finally {
+            helpers.setSubmitting(false);
+          }
         }}
       >
         {({
